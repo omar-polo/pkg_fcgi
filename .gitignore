@@ -1,0 +1,6 @@
+**/*.d
+**/*.o
+**/config.h
+**/config.log
+**/config.mk
+pkg_fcgi
