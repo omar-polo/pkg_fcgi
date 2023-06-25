@@ -1,0 +1,402 @@
+#!/bin/sh
+#
+# Copyright (c) 2014, 2015, 2016 Ingo Schwarze <schwarze@openbsd.org>
+# Copyright (c) 2017, 2018 Kristaps Dzonsons <kristaps@bsd.lv>
+# Copyright (c) 2022 Omar Polo <op@omarpolo.com>
+#
+# Permission to use, copy, modify, and distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+set -e
+
+RELEASE="${RELEASE:-no}"
+
+usage()
+{
+	echo "usage: $0 [--help] [--prefix=prefix] [OPTION=VALUE...]" >&2
+	exit 1
+}
+
+if command -v yacc 2>/dev/null >&2; then
+	YACC=yacc
+elif command -v bison 2>/dev/null >&2; then
+	YACC=bison
+else
+	# assume yacc by default.  Make will fail building parse.y if
+	# not from a release tarball, but at least it'll have a decent
+	# error message.
+	YACC=yacc
+fi
+
+if command -v pkg-config 2>/dev/null >&2; then
+	pkgconfig=pkg-config
+else
+	pkgconfig=
+fi
+
+db=
+user=
+sock=
+while [ $# -gt 0 ]; do
+	key="${1%%=*}"
+	val="${1#*=}"
+
+	if [ "$key" = --help ]; then
+		usage
+	fi
+
+	if [ "$key" = --prefix ]; then
+		key=PREFIX
+		if [ "$1" = --prefix ]; then # no =, look at next arg
+			if !shift 2>&1 >/dev/null; then
+				echo "$0: missing value for --prefix" >&2
+				exit 1
+			fi
+			val="$1"
+		fi
+	fi
+
+	if [ "$1" = "$key" ]; then
+		echo "$0: invalid key-value: $1" >&2
+		exit 1
+	fi
+
+	case "$key" in
+	CC)
+		CC="$val" ;;
+	CFLAGS)
+		CFLAGS="$val" ;;
+	DB)
+		db="$val" ;;
+	LDADD)
+		LDADD="$val" ;;
+	LDADD_LIBEVENT)
+		LDADD_LIBEVENT="$val" ;;
+	LDADD_LIBSQLITE3)
+		LDADD_LIBSQLITE3="$val" ;;
+	LDADD_LIBSOCKET)
+		LDADD_LIBSOCKET="$val" ;;
+	PKG_CONFIG)
+		pkgconfig="$val" ;;
+	SOCK)
+		sock="$sock" ;;
+	USER)
+		user="$val" ;;
+	YACC)
+		YACC="$val" ;;
+	esac
+
+	shift
+done
+
+CDIAGFLAGS=
+CDIAGFLAGS="${CDIAGFLAGS} -Wall -Wextra -Wpointer-arith -Wuninitialized"
+CDIAGFLAGS="${CDIAGFLAGS} -Wstrict-prototypes -Wmissing-prototypes -Wunused"
+CDIAGFLAGS="${CDIAGFLAGS} -Wsign-compare -Wshadow -Wno-unused-parameter"
+CDIAGFLAGS="${CDIAGFLAGS} -Wno-missing-field-initializers"
+CDIAGFLAGS="${CDIAGFLAGS} -Wno-pointer-sign"
+
+# don't ship releases with -Werror
+test "$RELEASE" = no && CDIAGFLAGS="${CDIAGFLAGS} -Werror"
+
+CFLAGS="${CFLAGS:--O2 -pipe} ${CDIAGFLAGS}"
+CC="${CC:-cc}"
+LIBS="${LIBS:-}"
+LDFLAGS="${LDFLAGS:-}"
+
+HOSTCC="${HOSTCC:-${CC}}"
+HOSTCFLAGS="${HOSTCFLAGS:-${CFLAGS}}"
+
+# echo "running configure for \`template':" >&2
+# (cd ./template && ./configure CC="$HOSTCC" CFLAGS="$HOSTCFLAGS" YACC="$YACC")
+# echo "returning to the configure for \`pkg_fcgi':" >&2
+
+CFLAGS="${CFLAGS} -I. -Itemplate"
+test -n "$db"   && CFLAGS="${CFLAGS} -DPKG_FCGI_DB=\"\\\"$conf\\\"\""
+test -n "$user" && CFLAGS="${CFLAGS} -DPKG_FCGI_USER=\"\\\"$user\\\"\""
+test -n "$sock" && CFLAGS="${CFLAGS} -DPKG_FCGI_SOCK=\"\\\"$conf\\\"\""
+
+[ -w config.log ] && mv config.log config.log.old
+
+exec 3> config.log
+echo "config.log: writing..."
+
+COMPATS=
+
+HAVE_ACCEPT4=
+HAVE_ASR_RUN=
+HAVE_ERR=
+HAVE_EVENT_ASR_RUN=
+HAVE_FREEZERO=
+HAVE_GETDTABLECOUNT=
+HAVE_GETDTABLESIZE=
+HAVE_GETEXECNAME=
+HAVE_GETPROGNAME=
+HAVE_LIBEVENT=
+HAVE_LIBSQLITE3=
+HAVE_PLEDGE=
+HAVE_REALLOCARRAY=
+HAVE_RECALLOCARRAY=
+HAVE_SETGROUPS=
+HAVE_SETPROCTITLE=
+HAVE_SETRESGID=
+HAVE_SETRESUID=
+HAVE_STRLCAT=
+HAVE_STRLCPY=
+HAVE_STRTONUM=
+HAVE_SYS_QUEUE=
+HAVE_SYS_TREE=
+HAVE_UNVEIL=
+HAVE_VASPRINTF=
+HAVE_WAIT_ANY=
+HAVE___PROGNAME=
+
+# singletest name var extra-cflags extra-libs msg
+singletest() {
+	msg="$5"
+	if [ -z "$msg" ]; then
+		if [ -n "$3" -a "$4" ]; then
+			msg=" ($3 $4)"
+		elif [ -n "$3" ]; then
+			msg=" ($3)"
+		elif [ -n "$4" ]; then
+			msg=" ($4)"
+		fi
+	elif [ "$msg" = no ]; then
+	     msg=""
+	fi
+
+	cat >&3 <<EOF
+${1}: testing...
+$CC tests/${1}.c -Werror $3 -o test-$1 $LDFLAGS $4
+EOF
+	if $CC tests/${1}.c -Werror $3 -o test-$1 $LDFLAGS $4 >&3 2>&3; then
+		rm -f test-${1} test-${1}.d
+
+		echo "${1}: $CC$msg succeeded" >&3
+		echo "${1}$msg: yes"
+		echo >&3
+
+		return 0
+	fi
+
+	echo "${1}: $CC$msg failed with $?" >&3
+	echo "${1}$msg: no"
+	echo >&3
+
+	return 1
+}
+
+# deptest name var
+deptest() {
+	if singletest "$1" "$2" "${CFLAGS}" "${LIBS}" no; then
+		eval HAVE_${2}=1
+		return 0
+	fi
+
+	if [ -f compat/${1}.c ]; then
+		COMPATS="compat/${1}.c $COMPATS"
+	fi
+
+	eval HAVE_${2}=0
+	return 1
+}
+
+# runtest name var extra-cflags extra-libs pkgconfig-name
+runtest() {
+	if singletest "$1" "$2" "" ""; then
+		eval HAVE_${2}=1
+		return 0
+	fi
+
+	if [ -n "$3" -o -n "$4" ]; then
+		echo "retrying with ${3+$3 }$4" >&3
+		if singletest "$1" "$2" "$3" "$4"; then
+			if [ -n "$3" ]; then
+				CFLAGS="$CFLAGS $3"
+			fi
+			if [ -n "${4}" ]; then
+				LIBS="$LIBS $4"
+			fi
+			eval HAVE_${2}=1
+			return 0
+		fi
+	fi
+
+	if [ -n "$5" -a -n "$pkgconfig" ]; then
+		if $pkgconfig "$5"; then
+			cflags="$($pkgconfig --cflags "$5")"
+			ldflags="$($pkgconfig --libs "$5")"
+			echo "retrying with pkg-config" >&3
+			if singletest "$1" "$2" "$3" "$cflags" "$ldflags"; then
+				CFLAGS="$CFLAGS $cflags"
+				LIBS="$LIBS $ldflags"
+				eval HAVE_${2}=1
+				return 0
+			fi
+		fi
+	fi
+
+	if [ -f compat/${1}.c ]; then
+		COMPATS="compat/${1}.c $COMPATS"
+	fi
+
+	eval HAVE_${2}=0
+	return 1
+}
+
+if singletest MMD _MMD -MMD >/dev/null; then
+	CFLAGS="${CFLAGS} -MMD"
+	echo "adding -MMD to CFLAGS" >&2
+	echo "adding -MMD to CFLAGS" >&3
+fi
+
+if ! singletest WAIT_ANY WAIT_ANY; then
+	CFLAGS="${CFLAGS} -DWAIT_ANY=-1"
+fi
+
+runtest accept4		ACCEPT4 -D_GNU_SOURCE			|| true
+runtest asr_run		ASR_RUN "" "-lasr"			|| true
+runtest err		ERR					|| true
+runtest freezero	FREEZERO				|| true
+runtest getdtablecount	GETDTABLECOUNT				|| true
+runtest getdtablesize	GETDTABLESIZE				|| true
+runtest getexecname	GETEXECNAME				|| true
+runtest getprogname	GETPROGNAME				|| true
+runtest libevent	LIBEVENT "" "-levent"	libevent_core	|| true
+runtest libsqlite3	LIBSQLITE3 "-I/usr/local/include" "-L/usr/local/lib -lsqlite3" sqlite3	|| true
+runtest pledge		PLEDGE					|| true
+runtest reallocarray	REALLOCARRAY -D_OPENBSD_SOURCE		|| true
+runtest recallocarray	RECALLOCARRAY -D_OPENBSD_SOURCE		|| true
+runtest setgroups	SETGROUPS -D_BSD_SOURCE			|| true
+runtest setproctitle	SETPROCTITLE				|| true
+runtest setresgid	SETRESGID -D_GNU_SOURCE			|| true
+runtest setresuid	SETRESUID -D_GNU_SOURCE			|| true
+runtest strlcat		STRLCAT					|| true
+runtest strlcpy		STRLCPY					|| true
+runtest strtonum	STRTONUM				|| true
+runtest sys_queue	SYS_QUEUE				|| true
+runtest sys_tree	SYS_TREE				|| true
+runtest unveil		UNVEIL					|| true
+runtest vasprintf	VASPRINTF -D_GNU_SOURCE			|| true
+runtest __progname	__PROGNAME				|| true
+
+deptest event_asr_run	EVENT_ASR_RUN				|| true
+
+# mandatory things:
+
+if [ "${HAVE_ACCEPT4}" -eq 0 ]; then
+	echo "Fatal: missing accept4(2)" >&2
+	echo "Fatal: missing accept4(2)" >&3
+	exit 1
+fi
+
+if [ "${HAVE_ASR_RUN}" -eq 0 ]; then
+	echo "Fatal: missing libasr" >&2
+	echo "Fatal: missing libasr" >&3
+	exit 1
+fi
+
+if [ "${HAVE_LIBEVENT}" -eq 0 ]; then
+	echo "Fatal: missing libevent" >&2
+	echo "Fatal: missing libevent" >&3
+	exit 1
+fi
+
+if [ "${HAVE_LIBSQLITE3}" -eq 0 ]; then
+	echo "Fatal: missing libsqlite3" >&2
+	echo "Fatal: missing libsqlite3" >&3
+	exit 1
+fi
+
+if [ "${HAVE_SETGROUPS}" -eq 0 ]; then
+	echo "Fatal: missing setgroups(2)" >&2
+	echo "Fatal: missing setgroups(2)" >&3
+	exit 1
+fi
+
+# things we can provide by ourselves:
+
+if [ "${HAVE_SYS_QUEUE}" -eq 0 -o "${HAVE_SYS_TREE}" -eq 0 ]; then
+	CFLAGS="-I compat/sys ${CFLAGS}"
+fi
+
+if [ -n "${COMPATS}" ]; then
+	CFLAGS="-I compat/ ${CFLAGS}"
+fi
+
+exec > config.h
+echo "config.h: writing..." >&2
+
+cat <<EOF
+#ifndef CONFIG_H
+#define CONFIG_H
+
+#ifdef __cplusplus
+# error "Do not use C++: this is a C application."
+#endif
+
+#define HAVE_ACCEPT4		${HAVE_ACCEPT4}
+#define HAVE_ASR_RUN		${HAVE_ASR_RUN}
+#define HAVE_ERR		${HAVE_ERR}
+#define HAVE_EVENT_ASR_RUN	${HAVE_EVENT_ASR_RUN}
+#define HAVE_FREEZERO		${HAVE_FREEZERO}
+#define HAVE_GETDTABLECOUNT	${HAVE_GETDTABLECOUNT}
+#define HAVE_GETDTABLESIZE	${HAVE_GETDTABLESIZE}
+#define HAVE_GETEXECNAME	${HAVE_GETEXECNAME}
+#define HAVE_GETPROGNAME	${HAVE_GETPROGNAME}
+#define HAVE_LIBEVENT		${HAVE_LIBEVENT}
+#define HAVE_LIBSQLITE3		${HAVE_LIBSQLITE3}
+#define HAVE_PLEDGE		${HAVE_PLEDGE}
+#define HAVE_REALLOCARRAY	${HAVE_REALLOCARRAY}
+#define HAVE_RECALLOCARRAY	${HAVE_RECALLOCARRAY}
+#define HAVE_SETGROUPS		${HAVE_SETGROUPS}
+#define HAVE_SETPROCTITLE	${HAVE_SETPROCTITLE}
+#define HAVE_SETRESGID		${HAVE_SETRESGID}
+#define HAVE_SETRESUID		${HAVE_SETRESUID}
+#define HAVE_STRLCAT		${HAVE_STRLCAT}
+#define HAVE_STRLCPY		${HAVE_STRLCPY}
+#define HAVE_STRTONUM		${HAVE_STRTONUM}
+#define HAVE_SYS_QUEUE		${HAVE_SYS_QUEUE}
+#define HAVE_SYS_TREE		${HAVE_SYS_TREE}
+#define HAVE_UNVEIL		${HAVE_UNVEIL}
+#define HAVE_VASPRINTF		${HAVE_VASPRINTF}
+#define HAVE___PROGNAME		${HAVE___PROGNAME}
+
+#endif
+EOF
+
+exec > config.mk
+echo "config.mk: writing..." >&2
+
+cat <<EOF
+CC=		${CC}
+CFLAGS=		${CFLAGS}
+LIBS=		${LIBS}
+LDFLAGS=	${LDFLAGS}
+YACC=		${YACC}
+
+COMPATS=	${COMPATS}
+
+INSTALL=	install
+INSTALL_PROGRAM=\${INSTALL} -m 0555
+INSTALL_LIB=	\${INSTALL} -m 0444
+INSTALL_MAN=	\${INSTALL} -m 0444
+INSTALL_DATA=	\${INSTALL} -m 0444
+
+EOF
+
+echo "done!" >&2
+
+echo >&2
+echo "Now run \`make' to compile." >&2
+echo >&2

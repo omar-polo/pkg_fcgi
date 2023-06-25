@@ -1,0 +1,4 @@
+# win
+
+fn m { make $* && doas ./pkg_fcgi -dv -j1 }
+fn g { gg -d all gemini://localhost/$"* }
