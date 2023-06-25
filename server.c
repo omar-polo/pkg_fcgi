@@ -527,6 +527,41 @@ route_listing(struct env *env, struct client *clt)
 	return (-1);
 }
 
+static int
+print_maintainer(struct client *clt, const char *mail)
+{
+	int	r, in_addr;
+
+	for (in_addr = 0; *mail != '\0'; ++mail) {
+		if (!in_addr) {
+			if (clt_putc(clt, *mail) == -1)
+				return (-1);
+			if (*mail == '<')
+				in_addr = 1;
+			continue;
+		}
+
+		switch (*mail) {
+		case '@':
+			r = clt_puts(clt, " at ");
+			break;
+		case '.':
+			r = clt_puts(clt, " dot ");
+			break;
+		case '>':
+			in_addr = 0;
+			/* fallthrough */
+		default:
+			r = clt_putc(clt, *mail);
+			break;
+		}
+		if (r == -1)
+			return (-1);
+	}
+
+	return (0);
+}
+
 int
 route_port(struct env *env, struct client *clt)
 {
@@ -597,7 +632,9 @@ route_port(struct env *env, struct client *clt)
 		goto err;
 
 	if (clt_printf(clt, "\n") == -1 ||
-	    clt_printf(clt, "Maintainer: %s\n", maintainer) == -1 ||
+	    clt_printf(clt, "Maintainer: ") == -1 ||
+	    print_maintainer(clt, maintainer) == -1 ||
+	    clt_puts(clt, "\n\n") == -1 ||
 	    clt_printf(clt, "## Description\n") == -1 ||
 	    clt_printf(clt, "``` %s description\n", stem) == -1 ||
 	    clt_puts(clt, descr) == -1 ||
