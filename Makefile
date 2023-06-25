@@ -27,11 +27,11 @@ all: ${PROG}
 
 clean:
 	rm -f *.[do] compat/*.[do] tests/*.[do] ui.c ${PROG}
-	${MAKE} -C template clean
+#	${MAKE} -C template clean
 
 distclean: clean
 	rm -f config.h config.h.old config.mk config.log config.log.old
-	# ${MAKE} -C template distclean
+#	${MAKE} -C template distclean
 
 install:
 	mkdir -p ${DESTDIR}${MANDIR}/man5
