@@ -635,7 +635,7 @@ route_port(struct env *env, struct client *clt)
 	    clt_printf(clt, "Maintainer: ") == -1 ||
 	    print_maintainer(clt, maintainer) == -1 ||
 	    clt_puts(clt, "\n\n") == -1 ||
-	    clt_printf(clt, "## Description\n") == -1 ||
+	    clt_printf(clt, "## Description\n\n") == -1 ||
 	    clt_printf(clt, "``` %s description\n", stem) == -1 ||
 	    clt_puts(clt, descr) == -1 ||
 	    clt_puts(clt, "```\n") == -1 ||
@@ -643,7 +643,7 @@ route_port(struct env *env, struct client *clt)
 		goto err;
 
 	if (readme && *readme != '\0') {
-		if (clt_puts(clt, "## Readme\n") == -1 ||
+		if (clt_puts(clt, "## Readme\n\n") == -1 ||
 		    clt_puts(clt, "\n") == -1 ||
 		    clt_printf(clt, "``` README for %s\n", stem) == -1 ||
 		    clt_puts(clt, readme) == -1 ||
