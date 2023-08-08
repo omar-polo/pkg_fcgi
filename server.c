@@ -213,6 +213,8 @@ server_reply(struct client *clt, int status, const char *ctype)
 int
 server_handle(struct env *env, struct client *clt)
 {
+	log_debug("SCRIPT_NAME %s", clt->clt_script_name);
+	log_debug("PATH_INFO   %s", clt->clt_path_info);
 	return (route_dispatch(env, clt));
 }
 
@@ -313,8 +315,6 @@ route_dispatch(struct env *env, struct client *clt)
 {
 	const struct route	*r;
 	size_t			 i;
-
-	log_debug("path info is %s", clt->clt_path_info);
 
 	for (i = 0; i < nitems(routes); ++i) {
 		r = &routes[i];
