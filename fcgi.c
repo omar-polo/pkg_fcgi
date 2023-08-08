@@ -350,9 +350,7 @@ fcgi_parse_params(struct fcgi *fcgi, struct evbuffer *src, struct client *clt)
 			continue;
 		}
 
-		/* XXX: fix gmid */
-		if (/*!strcmp(pname, "PATH_INFO") && */
-		    !strcmp(pname, "GEMINI_URL_PATH") &&
+		if (!strcmp(pname, "PATH_INFO") &&
 		    (size_t)vlen < sizeof(path)) {
 			fcgi->fcg_toread -= vlen;
 			evbuffer_remove(src, &path, vlen);
