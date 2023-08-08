@@ -341,9 +341,11 @@ route_home(struct env *env, struct client *clt)
 	if (clt_printf(clt, "Welcome to pkg_fcgi, the Gemini interface "
 	    "for the OpenBSD ports collection.\n\n") == -1)
 		return (-1);
-	if (clt_printf(clt, "=> /search Search for a package\n") == -1)
+	if (clt_printf(clt, "=> %s/search Search for a package\n",
+	    clt->clt_script_name) == -1)
 		return (-1);
-	if (clt_printf(clt, "=> /all/ All categories\n") == -1)
+	if (clt_printf(clt, "=> %s/all/ All categories\n",
+	    clt->clt_script_name) == -1)
 		return (-1);
 	if (clt_printf(clt, "\n") == -1)
 		return (-1);
@@ -414,9 +416,8 @@ route_search(struct env *env, struct client *clt)
 		comment = sqlite3_column_text(env->env_qsearch, 1);
 		fullpkgpath = sqlite3_column_text(env->env_qsearch, 2);
 
-		/* XXX fix URL */
-		if (clt_printf(clt, "=> /%s %s: %s\n", fullpkgpath,
-		    stem, comment) == -1)
+		if (clt_printf(clt, "=> %s/%s %s: %s\n", clt->clt_script_name,
+		    fullpkgpath, stem, comment) == -1)
 			goto err;
 	}
 
@@ -458,9 +459,8 @@ route_categories(struct env *env, struct client *clt)
 
 		fullpkgpath = sqlite3_column_text(env->env_qcats, 0);
 
-		/* XXX fix URL! */
-		if (clt_printf(clt, "=> /%s %s\n", fullpkgpath, fullpkgpath)
-		    == -1) {
+		if (clt_printf(clt, "=> %s/%s %s\n", clt->clt_script_name,
+		    fullpkgpath, fullpkgpath) == -1) {
 			sqlite3_reset(env->env_qcats);
 			return (-1);
 		}
@@ -511,9 +511,8 @@ route_listing(struct env *env, struct client *clt)
 
 		fullpkgpath = sqlite3_column_text(env->env_qbycat, 0);
 
-		/* XXX fix URL */
-		if (clt_printf(clt, "=> /%s %s\n", fullpkgpath, fullpkgpath)
-		    == -1) {
+		if (clt_printf(clt, "=> %s/%s %s\n", clt->clt_script_name,
+		    fullpkgpath, fullpkgpath) == -1) {
 			sqlite3_reset(env->env_qbycat);
 			return (-1);
 		}

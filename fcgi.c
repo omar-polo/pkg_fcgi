@@ -335,13 +335,7 @@ fcgi_parse_params(struct fcgi *fcgi, struct evbuffer *src, struct client *clt)
 			path[vlen] = '\0';
 
 			free(clt->clt_script_name);
-			clt->clt_script_name = NULL;
-
-			if (vlen == 0 || path[vlen - 1] != '/')
-				asprintf(&clt->clt_script_name, "%s/", path);
-			else
-				clt->clt_script_name = strdup(path);
-
+			clt->clt_script_name = strdup(path);
 			if (clt->clt_script_name == NULL)
 				return (-1);
 
@@ -357,13 +351,7 @@ fcgi_parse_params(struct fcgi *fcgi, struct evbuffer *src, struct client *clt)
 			path[vlen] = '\0';
 
 			free(clt->clt_path_info);
-			clt->clt_path_info = NULL;
-
-			if (*path != '/')
-				asprintf(&clt->clt_path_info, "/%s", path);
-			else
-				clt->clt_path_info = strdup(path);
-
+			clt->clt_path_info = strdup(path);
 			if (clt->clt_path_info == NULL)
 				return (-1);
 
