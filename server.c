@@ -344,7 +344,7 @@ route_home(struct env *env, struct client *clt)
 	if (clt_printf(clt, "=> %s/search Search for a package\n",
 	    clt->clt_script_name) == -1)
 		return (-1);
-	if (clt_printf(clt, "=> %s/all/ All categories\n",
+	if (clt_printf(clt, "=> %s/all All categories\n",
 	    clt->clt_script_name) == -1)
 		return (-1);
 	if (clt_printf(clt, "\n") == -1)
