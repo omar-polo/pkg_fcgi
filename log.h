@@ -1,45 +1,31 @@
-/*	$OpenBSD: log.h,v 1.2 2021/12/13 18:28:40 deraadt Exp $ */
-
 /*
- * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
+ * This is free and unencumbered software released into the public domain.
  *
- * Permission to use, copy, modify, and distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
- * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
- * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
- * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ * Anyone is free to copy, modify, publish, use, compile, sell, or
+ * distribute this software, either in source code form or as a compiled
+ * binary, for any purpose, commercial or non-commercial, and by any
+ * means.
  */
 
-#ifndef LOG_H
-#define LOG_H
+#define LOG_ATTR_PRINTF(A, B) __attribute__((__format__ (printf, A, B)))
+struct logger {
+	__dead void (*fatal)(int, const char *, ...)	LOG_ATTR_PRINTF(2, 3);
+	__dead void (*fatalx)(int, const char *, ...)	LOG_ATTR_PRINTF(2, 3);
+	void (*warn)(const char *, ...)			LOG_ATTR_PRINTF(1, 2);
+	void (*warnx)(const char *, ...)		LOG_ATTR_PRINTF(1, 2);
+	void (*info)(const char *, ...)			LOG_ATTR_PRINTF(1, 2);
+	void (*debug)(const char *, ...)		LOG_ATTR_PRINTF(1, 2);
+};
+#undef LOG_ATTR_PRINTF
 
-#include <stdarg.h>
+extern const struct logger *logger, syslogger, dbglogger;
+
+#define fatal(...)	logger->fatal(1, __VA_ARGS__)
+#define fatalx(...)	logger->fatalx(1, __VA_ARGS__)
+#define log_warn(...)	logger->warn(__VA_ARGS__)
+#define log_warnx(...)	logger->warnx(__VA_ARGS__)
+#define log_info(...)	logger->info(__VA_ARGS__)
+#define log_debug(...)	logger->debug(__VA_ARGS__)
 
 void	log_init(int, int);
-void	log_procinit(const char *);
 void	log_setverbose(int);
-int	log_getverbose(void);
-void	log_warn(const char *, ...)
-	    __attribute__((__format__ (printf, 1, 2)));
-void	log_warnx(const char *, ...)
-	    __attribute__((__format__ (printf, 1, 2)));
-void	log_info(const char *, ...)
-	    __attribute__((__format__ (printf, 1, 2)));
-void	log_debug(const char *, ...)
-	    __attribute__((__format__ (printf, 1, 2)));
-void	logit(int, const char *, ...)
-	    __attribute__((__format__ (printf, 2, 3)));
-void	vlog(int, const char *, va_list)
-	    __attribute__((__format__ (printf, 2, 0)));
-__dead void fatal(const char *, ...)
-	    __attribute__((__format__ (printf, 1, 2)));
-__dead void fatalx(const char *, ...)
-	    __attribute__((__format__ (printf, 1, 2)));
-
-#endif /* LOG_H */
