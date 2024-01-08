@@ -33,7 +33,10 @@
 
 #include "log.h"
 #include "pkg.h"
+
+#if template
 #include "tmpl.h"
+#endif
 
 #define MIN(a, b)	((a) < (b) ? (a) : (b))
 

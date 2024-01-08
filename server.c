@@ -29,7 +29,10 @@
 
 #include "log.h"
 #include "pkg.h"
+
+#if template
 #include "tmpl.h"
+#endif
 
 #ifndef nitems
 #define nitems(_a) (sizeof((_a)) / sizeof((_a)[0]))
