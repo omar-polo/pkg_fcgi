@@ -135,7 +135,6 @@ COMPATS=
 HAVE_ACCEPT4=
 HAVE_ASR_RUN=
 HAVE_ERR=
-HAVE_EVENT_ASR_RUN=
 HAVE_FREEZERO=
 HAVE_GETDTABLECOUNT=
 HAVE_GETDTABLESIZE=
@@ -290,8 +289,6 @@ runtest unveil		UNVEIL					|| true
 runtest vasprintf	VASPRINTF -D_GNU_SOURCE			|| true
 runtest __progname	__PROGNAME				|| true
 
-deptest event_asr_run	EVENT_ASR_RUN				|| true
-
 # mandatory things:
 
 if [ "${HAVE_ACCEPT4}" -eq 0 ]; then
@@ -348,7 +345,6 @@ cat <<EOF
 #define HAVE_ACCEPT4		${HAVE_ACCEPT4}
 #define HAVE_ASR_RUN		${HAVE_ASR_RUN}
 #define HAVE_ERR		${HAVE_ERR}
-#define HAVE_EVENT_ASR_RUN	${HAVE_EVENT_ASR_RUN}
 #define HAVE_FREEZERO		${HAVE_FREEZERO}
 #define HAVE_GETDTABLECOUNT	${HAVE_GETDTABLECOUNT}
 #define HAVE_GETDTABLESIZE	${HAVE_GETDTABLESIZE}

@@ -4,19 +4,14 @@ DISTFILES =	Makefile \
 		__progname.c \
 		accept4.c \
 		asr_run.c \
-		bufferevent_read_pressure_cb.c \
 		err.c \
-		event_asr_run.c \
 		freezero.c \
 		getdtablecount.c \
 		getdtablesize.c \
 		getexecname.c \
 		getprogname.c \
-		imsg.c \
 		libevent.c \
-		libevent2.c \
 		libsqlite3.c \
-		libtls.c \
 		pledge.c \
 		reallocarray.c \
 		recallocarray.c \

@@ -5,7 +5,6 @@ include config.mk
 PREFIX =	/usr/local
 SBINDIR =	${PREFIX}/sbin
 MANDIR =	${PREFIX}/man
-WWWDIR =	/var/www/htdocs
 
 # -- build-related variables --
 
@@ -34,20 +33,14 @@ distclean: clean
 #	${MAKE} -C template distclean
 
 install:
-	mkdir -p ${DESTDIR}${MANDIR}/man5
 	mkdir -p ${DESTDIR}${MANDIR}/man8
 	mkdir -p ${DESTDIR}${SBINDIR}
-	mkdir -p ${DESTDIR}${WWWDIR}
-	${INSTALL_MAN} galileo.conf.5 ${DESTDIR}${MANDIR}/man5/${PROG}.conf.5
-	${INSTALL_MAN} galileo.8 ${DESTDIR}${MANDIR}/man8/${PROG}.8
+	${INSTALL_MAN} pkg_fcgi.8 ${DESTDIR}${MANDIR}/man8/${PROG}.8
 	${INSTALL_PROGRAM} ${PROG} ${DESTDIR}${SBINDIR}
-	${INSTALL_DATA} galileo.css ${DESTDIR}${WWWDIR}
 
 uninstall:
-	rm ${DESTDIR}${MANDIR}/man5/${PROG}.conf.5
 	rm ${DESTDIR}${MANDIR}/man8/${PROG}.8
 	rm ${DESTDIR}${SBINDIR}/${PROG}
-	rm ${DESTDIR}${WWWDIR}/galileo.css
 
 # -- internal build targets --
 
@@ -63,23 +56,21 @@ ${PROG}: ${OBJS}
 
 # -- maintainer targets --
 
+PUBKEY =	keys/pkg_fcgi-${VERSION:S/.//}.pub
 PRIVKEY =	set-PRIVKEY
-DISTFILES =	CHANGES \
-		Makefile \
-		README \
+DISTFILES =	Makefile \
+		README.md \
 		configure \
 		fcgi.c \
-		pkg_fcgi.8 \
-		pkg_fcgi.c \
-		pkg_fcgi.css \
-		pkg_fcgi.h \
 		log.c \
 		log.h \
+		pkg.h \
+		pkg_fcgi.8 \
+		pkg_fcgi.c \
+		schema.sql \
 		server.c \
-		ui.c \
-		ui.tmpl \
 		xmalloc.c \
-		xmalloc.h \
+		xmalloc.h
 
 .PHONY: release dist
 
@@ -97,19 +88,21 @@ ${DISTNAME}.tar.gz: ${DISTFILES}
 	${INSTALL} -m 0644 ${DISTFILES} .dist/${DISTNAME}
 	${MAKE} -C compat	DESTDIR=${PWD}/.dist/${DISTNAME}/compat dist
 	${MAKE} -C keys		DESTDIR=${PWD}/.dist/${DISTNAME}/keys dist
-	${MAKE} -C template	DESTDIR=${PWD}/.dist/${DISTNAME}/template dist
+#	${MAKE} -C template	DESTDIR=${PWD}/.dist/${DISTNAME}/template dist
 	${MAKE} -C tests	DESTDIR=${PWD}/.dist/${DISTNAME}/tests dist
-	cd .dist/${DISTNAME} && chmod 755 configure template/configure
+	cd .dist/${DISTNAME} && chmod 755 configure # template/configure
 	cd .dist && tar czf ../$@ ${DISTNAME}
 	rm -rf .dist/
 
 .PHONY: ${DISTNAME}.tar.gz
 
+verify-release:
+	signify -C -p ${PUBKEY} -x ${DISTNAME}.sha256.sig
+
 # -- dependencies --
 
 -include fcgi.d
 -include log.d
--include pgk_fcgi.d
+-include pkg_fcgi.d
 -include server.d
--include ui.d
 -include xmalloc.d

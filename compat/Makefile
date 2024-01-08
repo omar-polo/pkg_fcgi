@@ -1,8 +1,6 @@
 DISTFILES =	Makefile \
-		bufferevent_read_pressure_cb.c \
 		err.c \
 		event.h \
-		event_asr_run.c \
 		freezero.c \
 		getdtablecount.c \
 		getdtablesize.c \
@@ -28,7 +26,6 @@ all:
 dist: ${DISTFILES}
 	mkdir -p ${DESTDIR}/
 	${INSTALL} -m 0644 ${DISTFILES} ${DESTDIR}/
-	${MAKE} -C imsg DESTDIR=${DESTDIR}/imsg dist
 	${MAKE} -C sys DESTDIR=${DESTDIR}/sys dist
 
 .PHONY: all dist
