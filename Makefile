@@ -58,7 +58,8 @@ ${PROG}: ${OBJS}
 
 PUBKEY =	keys/pkg_fcgi-${VERSION:S/.//}.pub
 PRIVKEY =	set-PRIVKEY
-DISTFILES =	Makefile \
+DISTFILES =	CHANGES \
+		Makefile \
 		README.md \
 		configure \
 		fcgi.c \
