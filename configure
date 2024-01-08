@@ -133,7 +133,6 @@ echo "config.log: writing..."
 COMPATS=
 
 HAVE_ACCEPT4=
-HAVE_ASR_RUN=
 HAVE_ERR=
 HAVE_FREEZERO=
 HAVE_GETDTABLECOUNT=
@@ -264,7 +263,6 @@ if ! singletest WAIT_ANY WAIT_ANY; then
 fi
 
 runtest accept4		ACCEPT4 -D_GNU_SOURCE			|| true
-runtest asr_run		ASR_RUN "" "-lasr"			|| true
 runtest err		ERR					|| true
 runtest freezero	FREEZERO				|| true
 runtest getdtablecount	GETDTABLECOUNT				|| true
@@ -294,12 +292,6 @@ runtest __progname	__PROGNAME				|| true
 if [ "${HAVE_ACCEPT4}" -eq 0 ]; then
 	echo "Fatal: missing accept4(2)" >&2
 	echo "Fatal: missing accept4(2)" >&3
-	exit 1
-fi
-
-if [ "${HAVE_ASR_RUN}" -eq 0 ]; then
-	echo "Fatal: missing libasr" >&2
-	echo "Fatal: missing libasr" >&3
 	exit 1
 fi
 
@@ -343,7 +335,6 @@ cat <<EOF
 #endif
 
 #define HAVE_ACCEPT4		${HAVE_ACCEPT4}
-#define HAVE_ASR_RUN		${HAVE_ASR_RUN}
 #define HAVE_ERR		${HAVE_ERR}
 #define HAVE_FREEZERO		${HAVE_FREEZERO}
 #define HAVE_GETDTABLECOUNT	${HAVE_GETDTABLECOUNT}
